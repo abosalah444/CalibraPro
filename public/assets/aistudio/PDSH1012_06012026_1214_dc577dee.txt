@@ -1,0 +1,34 @@
+﻿Calibration Result
+--------------------
+Tag	PDSH1012
+Calibration Date	01/06/2026 12:14:23 PM
+Serial Number	
+ID	No name
+
+Test Equipment Used
+--------------------
+Manufacturer	Model Number	Serial Number
+Fluke	750P05	5128030
+Fluke	754	64350017
+
+Switch Test Setup
+--------------------
+In Type	g/cm2
+# of Set Points	1
+Trip Detection Mode	Trip DCV
+Setpoint +/-	50.0
+Include Reset Test	Yes
+Deadband Min	0.0
+Deadband Max	40.0
+Step Size	0.0
+
+As Found Results
+--------------------
+Direction	Set Point	Set State	As Found Set	As Found Reset	Setpoint Error	Deadband Error
+High	500.0	Low	499.2	332.7	-0.800000000000011	126.5
+
+As Left Results
+--------------------
+Direction	Set Point	Set State	As Left Set	As Left Reset	Setpoint Error	Deadband Error
+High	500.0	Low	499.2	332.7	-0.800000000000011	126.5
+

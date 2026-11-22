@@ -1,0 +1,687 @@
+{
+  "standards": [
+    {
+      "id": "std-1",
+      "standardCode": "STD-P-001",
+      "name": "Digital Pressure Calibrator (-1 to 200 bar)",
+      "manufacturer": "Druck",
+      "model": "DPI 611-200G",
+      "serialNumber": "DRK-611-88421",
+      "category": "Pressure",
+      "accuracySpec": "±0.0185% FS",
+      "measurementRange": "-1 to 200 bar",
+      "lastCalibrationDate": "2026-06-18",
+      "nextDueDate": "2027-06-18",
+      "calibrationIntervalDays": 365,
+      "certificateRef": "UKAS-2026-99412",
+      "traceabilityLab": "National Metrology Institute (NMI)",
+      "status": "Valid",
+      "notes": "Includes internal pneumatic & hydraulic hand pump manifold.",
+      "certificateFile": null
+    },
+    {
+      "id": "std-2",
+      "standardCode": "STD-E-002",
+      "name": "Documenting Process & Loop Calibrator",
+      "manufacturer": "Fluke",
+      "model": "754 HART",
+      "serialNumber": "FLK-754-30194",
+      "category": "Electrical / Loop",
+      "accuracySpec": "±0.01% rdg + 0.002 mA",
+      "measurementRange": "0–30 V DC / 0–24 mA / TC / RTD",
+      "lastCalibrationDate": "2026-08-04",
+      "nextDueDate": "2027-08-04",
+      "calibrationIntervalDays": 365,
+      "certificateRef": "NIST-754-44108",
+      "traceabilityLab": "Fluke Primary Standards Lab",
+      "status": "Valid",
+      "notes": "Used for 4–20 mA loop verification and HART trim."
+    },
+    {
+      "id": "std-3",
+      "standardCode": "STD-T-003",
+      "name": "Precision Dry-Well Temperature Calibrator",
+      "manufacturer": "AMETEK Jofra",
+      "model": "RTC-700B",
+      "serialNumber": "JOF-700-11920",
+      "category": "Temperature",
+      "accuracySpec": "±0.11 °C (with external STS)",
+      "measurementRange": "33 °C to 700 °C",
+      "lastCalibrationDate": "2025-12-08",
+      "nextDueDate": "2026-12-08",
+      "calibrationIntervalDays": 365,
+      "certificateRef": "DAKKS-2025-7721",
+      "traceabilityLab": "DAkkS Accredited Thermal Lab",
+      "status": "Due Soon",
+      "notes": "Recalibration due within 30 days; schedule external send-out."
+    },
+    {
+      "id": "std-4",
+      "standardCode": "STD-F-004",
+      "name": "Multifunction Process Calibrator",
+      "manufacturer": "Beamex",
+      "model": "MC6-Ex",
+      "serialNumber": "BMX-MC6-55012",
+      "category": "Multifunction",
+      "accuracySpec": "±0.01% + 0.005% FS",
+      "measurementRange": "-1 to 100 bar / mA / V / Hz / RTD",
+      "lastCalibrationDate": "2026-09-12",
+      "nextDueDate": "2027-09-12",
+      "calibrationIntervalDays": 365,
+      "certificateRef": "FINAS-2026-1088",
+      "traceabilityLab": "Beamex Calibration Laboratory",
+      "status": "Valid",
+      "notes": "ATEX intrinsically safe unit for Zone 1 field loops."
+    },
+    {
+      "id": "std-5",
+      "standardCode": "STD-M-005",
+      "name": "Reference Mass Flow & Frequency Counter",
+      "manufacturer": "Keysight",
+      "model": "53230A",
+      "serialNumber": "KEY-532-90411",
+      "category": "Flow / Frequency",
+      "accuracySpec": "±20 ps / 0.001 Hz",
+      "measurementRange": "0.1 Hz to 350 MHz",
+      "lastCalibrationDate": "2025-10-15",
+      "nextDueDate": "2026-10-15",
+      "calibrationIntervalDays": 365,
+      "certificateRef": "A2LA-2025-3302",
+      "traceabilityLab": "Keysight Metrology Center",
+      "status": "Overdue",
+      "notes": "Do not issue certificates with this unit until recalibrated."
+    },
+    {
+      "id": "std-6",
+      "standardCode": "STD-H-006",
+      "name": "Chilled Mirror Hygrometer & Temp Reference",
+      "manufacturer": "Vaisala",
+      "model": "HM70 / HMT337",
+      "serialNumber": "VSL-337-77410",
+      "category": "Humidity / Environmental",
+      "accuracySpec": "±0.8% RH / ±0.1 °C",
+      "measurementRange": "0–100% RH / -40 to +180 °C",
+      "lastCalibrationDate": "2026-02-20",
+      "nextDueDate": "2027-02-20",
+      "calibrationIntervalDays": 365,
+      "certificateRef": "MIKES-2026-612",
+      "traceabilityLab": "Vaisala Helsinki Accredited Lab",
+      "status": "Out for Calibration",
+      "notes": "Sent out for mid-cycle sensor drift verification."
+    }
+  ],
+  "plantEquipment": [
+    {
+      "id": "plt-1",
+      "assetId": "PT-104A",
+      "tagName": "Reactor Feed Header Pressure",
+      "description": "Smart Differential/Gauge Pressure Transmitter",
+      "manufacturer": "Rosemount",
+      "model": "3051TG4A2B21A",
+      "serialNumber": "RSM-3051-992014",
+      "plantArea": "Unit 100 · Reactor Feed",
+      "category": "Pressure Transmitter",
+      "equipmentType": "transmitter",
+      "frequencyDays": 180,
+      "frequencyLabel": "180 Days (Semi-Annual)",
+      "rangeMin": 0,
+      "rangeMax": 160,
+      "rangeUnit": "bar",
+      "outputRangeMin": 4,
+      "outputRangeMax": 20,
+      "outputUnit": "mA",
+      "toleranceSpec": "±0.08 mA (±0.5% Span)",
+      "lastCalibrationDate": "2026-05-24",
+      "nextDueDate": "2026-11-20",
+      "status": "Due Soon",
+      "setpoints": [
+        {
+          "id": "sp-1",
+          "label": "0% Zero",
+          "nominalInput": 0,
+          "inputUnit": "bar",
+          "expectedOutput": 4,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.08
+        },
+        {
+          "id": "sp-2",
+          "label": "25% Span",
+          "nominalInput": 40,
+          "inputUnit": "bar",
+          "expectedOutput": 8,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.08
+        },
+        {
+          "id": "sp-3",
+          "label": "50% Mid",
+          "nominalInput": 80,
+          "inputUnit": "bar",
+          "expectedOutput": 12,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.08
+        },
+        {
+          "id": "sp-4",
+          "label": "75% Span",
+          "nominalInput": 120,
+          "inputUnit": "bar",
+          "expectedOutput": 16,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.08
+        },
+        {
+          "id": "sp-5",
+          "label": "100% Full",
+          "nominalInput": 160,
+          "inputUnit": "bar",
+          "expectedOutput": 20,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.08
+        }
+      ]
+    },
+    {
+      "id": "plt-2",
+      "assetId": "TT-209B",
+      "tagName": "Distillation Column Overhead Temp",
+      "description": "Pt100 4-Wire RTD with Head Transmitter",
+      "manufacturer": "Endress+Hauser",
+      "model": "iTEMP TMT82",
+      "serialNumber": "EH-TMT82-44109",
+      "plantArea": "Unit 200 · Distillation",
+      "category": "Temperature Transmitter",
+      "equipmentType": "transmitter",
+      "frequencyDays": 365,
+      "frequencyLabel": "365 Days (Annual)",
+      "rangeMin": 50,
+      "rangeMax": 350,
+      "rangeUnit": "°C",
+      "outputRangeMin": 4,
+      "outputRangeMax": 20,
+      "outputUnit": "mA",
+      "toleranceSpec": "±0.10 mA (±0.625% Span)",
+      "lastCalibrationDate": "2026-03-10",
+      "nextDueDate": "2027-03-10",
+      "status": "In Tolerance",
+      "setpoints": [
+        {
+          "id": "sp-1",
+          "label": "0% Low",
+          "nominalInput": 50,
+          "inputUnit": "°C",
+          "expectedOutput": 4,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.1
+        },
+        {
+          "id": "sp-2",
+          "label": "25% Span",
+          "nominalInput": 125,
+          "inputUnit": "°C",
+          "expectedOutput": 8,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.1
+        },
+        {
+          "id": "sp-3",
+          "label": "50% Mid",
+          "nominalInput": 200,
+          "inputUnit": "°C",
+          "expectedOutput": 12,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.1
+        },
+        {
+          "id": "sp-4",
+          "label": "75% Span",
+          "nominalInput": 275,
+          "inputUnit": "°C",
+          "expectedOutput": 16,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.1
+        },
+        {
+          "id": "sp-5",
+          "label": "100% High",
+          "nominalInput": 350,
+          "inputUnit": "°C",
+          "expectedOutput": 20,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.1
+        }
+      ]
+    },
+    {
+      "id": "plt-3",
+      "assetId": "FT-301",
+      "tagName": "Solvent Recovery Mass Flow",
+      "description": "Coriolis Mass Flowmeter",
+      "manufacturer": "Micro Motion",
+      "model": "CMF200M319",
+      "serialNumber": "MM-CMF-601283",
+      "plantArea": "Unit 300 · Solvent Recovery",
+      "category": "Flow Meter",
+      "equipmentType": "transmitter",
+      "frequencyDays": 365,
+      "frequencyLabel": "365 Days (Annual)",
+      "rangeMin": 0,
+      "rangeMax": 1200,
+      "rangeUnit": "kg/h",
+      "outputRangeMin": 4,
+      "outputRangeMax": 20,
+      "outputUnit": "mA",
+      "toleranceSpec": "±0.05 mA (±0.31% Span)",
+      "lastCalibrationDate": "2025-10-02",
+      "nextDueDate": "2026-10-02",
+      "status": "Overdue",
+      "setpoints": [
+        {
+          "id": "sp-1",
+          "label": "Zero Flow",
+          "nominalInput": 0,
+          "inputUnit": "kg/h",
+          "expectedOutput": 4,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.05
+        },
+        {
+          "id": "sp-2",
+          "label": "25% Flow",
+          "nominalInput": 300,
+          "inputUnit": "kg/h",
+          "expectedOutput": 8,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.05
+        },
+        {
+          "id": "sp-3",
+          "label": "50% Flow",
+          "nominalInput": 600,
+          "inputUnit": "kg/h",
+          "expectedOutput": 12,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.05
+        },
+        {
+          "id": "sp-4",
+          "label": "75% Flow",
+          "nominalInput": 900,
+          "inputUnit": "kg/h",
+          "expectedOutput": 16,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.05
+        },
+        {
+          "id": "sp-5",
+          "label": "100% Max",
+          "nominalInput": 1200,
+          "inputUnit": "kg/h",
+          "expectedOutput": 20,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.05
+        }
+      ]
+    },
+    {
+      "id": "plt-4",
+      "assetId": "LT-112",
+      "tagName": "Buffer Tank Hydrostatic Level",
+      "description": "Flange-Mounted DP Level Transmitter",
+      "manufacturer": "Yokogawa",
+      "model": "EJA210E",
+      "serialNumber": "YOK-EJA-77319",
+      "plantArea": "Unit 100 · Tank Farm",
+      "category": "Level Transmitter",
+      "equipmentType": "transmitter",
+      "frequencyDays": 180,
+      "frequencyLabel": "180 Days (Semi-Annual)",
+      "rangeMin": 0,
+      "rangeMax": 500,
+      "rangeUnit": "mbar",
+      "outputRangeMin": 4,
+      "outputRangeMax": 20,
+      "outputUnit": "mA",
+      "toleranceSpec": "±0.08 mA (±0.5% Span)",
+      "lastCalibrationDate": "2026-07-15",
+      "nextDueDate": "2027-01-11",
+      "status": "In Tolerance",
+      "setpoints": [
+        {
+          "id": "sp-1",
+          "label": "0% Empty",
+          "nominalInput": 0,
+          "inputUnit": "mbar",
+          "expectedOutput": 4,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.08
+        },
+        {
+          "id": "sp-2",
+          "label": "25% Level",
+          "nominalInput": 125,
+          "inputUnit": "mbar",
+          "expectedOutput": 8,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.08
+        },
+        {
+          "id": "sp-3",
+          "label": "50% Level",
+          "nominalInput": 250,
+          "inputUnit": "mbar",
+          "expectedOutput": 12,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.08
+        },
+        {
+          "id": "sp-4",
+          "label": "75% Level",
+          "nominalInput": 375,
+          "inputUnit": "mbar",
+          "expectedOutput": 16,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.08
+        },
+        {
+          "id": "sp-5",
+          "label": "100% Full",
+          "nominalInput": 500,
+          "inputUnit": "mbar",
+          "expectedOutput": 20,
+          "outputUnit": "mA",
+          "tolerancePlusMinus": 0.08
+        }
+      ]
+    },
+    {
+      "id": "plt-5",
+      "assetId": "PCV-405",
+      "tagName": "Steam Header Control Valve Positioner",
+      "description": "Digital Electro-Pneumatic Valve Positioner",
+      "manufacturer": "Fisher",
+      "model": "DVC6200",
+      "serialNumber": "FSH-DVC-18402",
+      "plantArea": "Unit 400 · Utilities Steam",
+      "category": "Control Valve / Positioner",
+      "equipmentType": "transmitter",
+      "frequencyDays": 90,
+      "frequencyLabel": "90 Days (Quarterly)",
+      "rangeMin": 4,
+      "rangeMax": 20,
+      "rangeUnit": "mA",
+      "outputRangeMin": 0,
+      "outputRangeMax": 100,
+      "outputUnit": "% Travel",
+      "toleranceSpec": "±1.0 % Travel",
+      "lastCalibrationDate": "2026-09-01",
+      "nextDueDate": "2026-11-30",
+      "status": "Due Soon",
+      "setpoints": [
+        {
+          "id": "sp-1",
+          "label": "0% Closed",
+          "nominalInput": 4,
+          "inputUnit": "mA",
+          "expectedOutput": 0,
+          "outputUnit": "% Travel",
+          "tolerancePlusMinus": 1
+        },
+        {
+          "id": "sp-2",
+          "label": "25% Stroke",
+          "nominalInput": 8,
+          "inputUnit": "mA",
+          "expectedOutput": 25,
+          "outputUnit": "% Travel",
+          "tolerancePlusMinus": 1
+        },
+        {
+          "id": "sp-3",
+          "label": "50% Stroke",
+          "nominalInput": 12,
+          "inputUnit": "mA",
+          "expectedOutput": 50,
+          "outputUnit": "% Travel",
+          "tolerancePlusMinus": 1
+        },
+        {
+          "id": "sp-4",
+          "label": "75% Stroke",
+          "nominalInput": 16,
+          "inputUnit": "mA",
+          "expectedOutput": 75,
+          "outputUnit": "% Travel",
+          "tolerancePlusMinus": 1
+        },
+        {
+          "id": "sp-5",
+          "label": "100% Open",
+          "nominalInput": 20,
+          "inputUnit": "mA",
+          "expectedOutput": 100,
+          "outputUnit": "% Travel",
+          "tolerancePlusMinus": 1
+        }
+      ]
+    },
+    {
+      "id": "plt-6",
+      "assetId": "PSH-108",
+      "tagName": "LPG Sphere High Pressure Trip Switch",
+      "description": "Snap-Acting Process Pressure Switch (SPDT)",
+      "manufacturer": "SOR",
+      "model": "6NN-K45-N4-C1A",
+      "serialNumber": "SOR-6NN-55192",
+      "plantArea": "Unit 100 · LPG Storage Sphere",
+      "category": "Pressure Switch",
+      "equipmentType": "switch",
+      "switchSpec": {
+        "tripDirection": "Rising (High)",
+        "normalContact": "NC (Normally Closed)",
+        "tripSetpoint": 18.5,
+        "resetPoint": 17.6,
+        "tolerancePlusMinus": 0.3,
+        "unit": "bar"
+      },
+      "frequencyDays": 180,
+      "frequencyLabel": "180 Days (Semi-Annual)",
+      "rangeMin": 0,
+      "rangeMax": 25,
+      "rangeUnit": "bar",
+      "outputRangeMin": 0,
+      "outputRangeMax": 1,
+      "outputUnit": "Contact",
+      "toleranceSpec": "±0.30 bar (Single-Point Trip)",
+      "lastCalibrationDate": "2026-06-05",
+      "nextDueDate": "2026-12-02",
+      "status": "Due Soon",
+      "setpoints": [
+        {
+          "id": "sp-1",
+          "label": "Switch Trip Point",
+          "nominalInput": 18.5,
+          "inputUnit": "bar",
+          "expectedOutput": 18.5,
+          "outputUnit": "bar",
+          "tolerancePlusMinus": 0.3
+        }
+      ]
+    }
+  ],
+  "certificates": [
+    {
+      "id": "cert-seed-1",
+      "certificateNumber": "CERT-2026-1041",
+      "createdAt": "2026-09-01T14:22:00.000Z",
+      "calibrationDate": "2026-09-01",
+      "nextDueDate": "2026-11-30",
+      "plantEquipmentId": "plt-5",
+      "assetId": "PCV-405",
+      "assetSnapshot": {
+        "assetId": "PCV-405",
+        "tagName": "Steam Header Control Valve Positioner",
+        "description": "Digital Electro-Pneumatic Valve Positioner",
+        "manufacturer": "Fisher",
+        "model": "DVC6200",
+        "serialNumber": "FSH-DVC-18402",
+        "plantArea": "Unit 400 · Utilities Steam",
+        "category": "Control Valve / Positioner",
+        "equipmentType": "transmitter",
+        "frequencyLabel": "90 Days (Quarterly)",
+        "rangeText": "4 – 20 mA",
+        "outputRangeText": "0 – 100 % Travel",
+        "toleranceSpec": "±1.0 % Travel"
+      },
+      "referenceStandardIds": [
+        "std-2"
+      ],
+      "referenceStandardsSnapshot": [
+        {
+          "id": "std-2",
+          "standardCode": "STD-E-002",
+          "name": "Documenting Process & Loop Calibrator",
+          "manufacturer": "Fluke",
+          "model": "754 HART",
+          "serialNumber": "FLK-754-30194",
+          "certificateRef": "NIST-754-44108",
+          "lastCalibrationDate": "2026-08-04",
+          "nextDueDate": "2027-08-04",
+          "status": "Valid",
+          "accuracySpec": "±0.01% rdg + 0.002 mA"
+        }
+      ],
+      "laboratoryName": "Amerya LPG Instrumentation Calibration LAB",
+      "accreditationNumber": "",
+      "facilityAddress": "",
+      "procedureRef": "SOP-CAL-INST-014 Rev 4.2",
+      "ambientTempC": "21.8",
+      "relativeHumidityPct": "43.5",
+      "barometricPressureHpa": "1014.0",
+      "readings": [
+        {
+          "id": "sp-1",
+          "label": "0% Closed",
+          "nominalInput": 4,
+          "inputUnit": "mA",
+          "expectedOutput": 0,
+          "outputUnit": "% Travel",
+          "asFound": "0.2",
+          "asLeft": "0.1",
+          "tolerance": 1
+        },
+        {
+          "id": "sp-2",
+          "label": "25% Stroke",
+          "nominalInput": 8,
+          "inputUnit": "mA",
+          "expectedOutput": 25,
+          "outputUnit": "% Travel",
+          "asFound": "25.4",
+          "asLeft": "25.1",
+          "tolerance": 1
+        },
+        {
+          "id": "sp-3",
+          "label": "50% Stroke",
+          "nominalInput": 12,
+          "inputUnit": "mA",
+          "expectedOutput": 50,
+          "outputUnit": "% Travel",
+          "asFound": "50.3",
+          "asLeft": "50.0",
+          "tolerance": 1
+        },
+        {
+          "id": "sp-4",
+          "label": "75% Stroke",
+          "nominalInput": 16,
+          "inputUnit": "mA",
+          "expectedOutput": 75,
+          "outputUnit": "% Travel",
+          "asFound": "74.8",
+          "asLeft": "75.0",
+          "tolerance": 1
+        },
+        {
+          "id": "sp-5",
+          "label": "100% Open",
+          "nominalInput": 20,
+          "inputUnit": "mA",
+          "expectedOutput": 100,
+          "outputUnit": "% Travel",
+          "asFound": "99.7",
+          "asLeft": "100.0",
+          "tolerance": 1
+        }
+      ],
+      "overallResult": "PASS",
+      "remarks": "Valve stroke hysteresis verified within ±1.0% limit across full travel range. Auto-tune confirmed.",
+      "technicianSignature": {
+        "signerName": "Marcus Vance",
+        "signerTitle": "Lead Metrology Technician",
+        "licenseId": "MET-4491",
+        "signedAt": "2026-09-01T14:15:00.000Z",
+        "signatureDataUrl": "",
+        "method": "typed"
+      },
+      "approverSignature": {
+        "signerName": "Dr. Elena Rostova",
+        "signerTitle": "Quality Assurance Manager",
+        "licenseId": "QA-1082",
+        "signedAt": "2026-09-01T14:21:30.000Z",
+        "signatureDataUrl": "",
+        "method": "typed"
+      },
+      "verificationHash": "8F3A19C04E7B21D8F65C04A9912E3B4D77C8A012B5E4F9D2A1C0E8B3D7A5612C"
+    }
+  ],
+  "users": [
+    {
+      "id": "usr-1",
+      "fullName": "Marcus Vance",
+      "title": "Senior Metrology Technician",
+      "licenseId": "MET-4491",
+      "department": "Instrumentation Calibration Lab",
+      "email": "m.vance@ameryalpg.local",
+      "active": true
+    },
+    {
+      "id": "usr-2",
+      "fullName": "Dr. Elena Rostova",
+      "title": "QA Calibration Lead",
+      "licenseId": "QA-1082",
+      "department": "Quality Assurance",
+      "email": "e.rostova@ameryalpg.local",
+      "active": true
+    },
+    {
+      "id": "usr-3",
+      "fullName": "Tariq Al-Mansoor",
+      "title": "Instrumentation Engineer",
+      "licenseId": "INS-2214",
+      "department": "Field Instrumentation",
+      "email": "t.almansoor@ameryalpg.local",
+      "active": true
+    },
+    {
+      "id": "usr-4",
+      "fullName": "Nadia Hassan",
+      "title": "Process Control Specialist",
+      "licenseId": "PCS-3109",
+      "department": "Amerya LPG Operations",
+      "email": "n.hassan@ameryalpg.local",
+      "active": true
+    }
+  ],
+  "labSettings": {
+    "laboratoryName": "Amerya LPG Instrumentation Calibration LAB",
+    "accreditationNumber": "",
+    "facilityAddress": "",
+    "defaultProcedure": "SOP-CAL-INST-014 Rev 4.2",
+    "defaultAmbientTempC": "21.5",
+    "defaultHumidityPct": "44.0",
+    "defaultPressureHpa": "1013.2"
+  }
+}

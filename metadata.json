@@ -1,0 +1,6 @@
+{
+  "name": "CalibraPro",
+  "description": "Precision calibration management software for plant asset tracking, reference standards control, and digitally signed ISO/IEC 17025 PDF calibration certificates.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

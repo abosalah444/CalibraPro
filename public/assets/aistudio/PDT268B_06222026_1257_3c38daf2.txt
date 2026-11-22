@@ -1,0 +1,52 @@
+﻿Calibration Result
+--------------------
+Tag	PDT268B
+Calibration Date	22/06/2026 12:57:33 PM
+Serial Number	8514594
+ID	No name
+
+Test Equipment Used
+--------------------
+Manufacturer	Model Number	Serial Number
+Fluke	750P05	5128030
+Fluke	754	64350017
+
+Test Setup
+--------------------
+In Low Range	0.0
+In High Range	980.7
+Input Type	mbar
+Out Low Range	0.0
+Out High Range	980.7
+Output Type	kg/cmÂ²
+Correlation to Output	Linear
+# Cal Pts	9
+Tolerance	2%
+As Found Result	Pass
+As Left Result	Pass
+
+As Found Results
+--------------------
+In Val	In Type	Out Val	Out Type	Rng %	Fnd As	Error %
+-2.2	mbar	-2.2	kg/cmÂ²	2%	-0.4	0.2%
+243.7	mbar	243.7	kg/cmÂ²	2%	245.9	0.2%
+497.2	mbar	497.2	kg/cmÂ²	2%	499.1	0.2%
+729.7	mbar	729.7	kg/cmÂ²	2%	738.3	0.9%
+981.7	mbar	981.7	kg/cmÂ²	2%	984.2	0.3%
+729.4	mbar	729.4	kg/cmÂ²	2%	735.7	0.6%
+489.2	mbar	489.2	kg/cmÂ²	2%	494.8	0.6%
+240.5	mbar	240.5	kg/cmÂ²	2%	244.2	0.4%
+-2.1	mbar	-2.1	kg/cmÂ²	2%	-0.2	0.2%
+
+As Left Results
+--------------------
+In Val	In Type	Out Val	Out Type	Rng %	Lft As	Error %
+-2.2	mbar	-2.2	kg/cmÂ²	2%	-0.4	0.2%
+243.7	mbar	243.7	kg/cmÂ²	2%	245.9	0.2%
+497.2	mbar	497.2	kg/cmÂ²	2%	499.1	0.2%
+729.7	mbar	729.7	kg/cmÂ²	2%	738.3	0.9%
+981.7	mbar	981.7	kg/cmÂ²	2%	984.2	0.3%
+729.4	mbar	729.4	kg/cmÂ²	2%	735.7	0.6%
+489.2	mbar	489.2	kg/cmÂ²	2%	494.8	0.6%
+240.5	mbar	240.5	kg/cmÂ²	2%	244.2	0.4%
+-2.1	mbar	-2.1	kg/cmÂ²	2%	-0.2	0.2%
