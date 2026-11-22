@@ -1297,6 +1297,25 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
           approverSignature={approverSignature}
           onClose={() => setTxtModalOpen(false)}
           onApplyToStudio={handleApplyTxtReport}
+          onIssueCertificate={onIssueCertificate}
+          onSaveImportedPlant={onSaveImportedPlant}
+          onBatchIssueComplete={(issuedCerts) => {
+            if (issuedCerts.length === 0) return;
+            const match = certificateNumber.match(/^(.*?)(\d+)$/);
+            if (match) {
+              const nextNum = String(
+                Number(match[2]) + issuedCerts.length
+              ).padStart(match[2].length, '0');
+              setCertificateNumber(`${match[1]}${nextNum}`);
+            }
+            const firstNo = issuedCerts[0].certificateNumber;
+            const lastNo =
+              issuedCerts[issuedCerts.length - 1].certificateNumber;
+            setSaveError(null);
+            setSaveNotice(
+              `Batch converted & issued ${issuedCerts.length} certificates (${firstNo} – ${lastNo}) to the Certificate Archive.`
+            );
+          }}
         />
       )}
     </div>

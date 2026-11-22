@@ -97,14 +97,8 @@ export async function exportCertificateToPdf(
 
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(isSwitchCert ? 12.5 : 14);
-  doc.text(
-    isSwitchCert
-      ? 'CALIBRATION CERTIFICATE · SINGLE-POINT SWITCH'
-      : 'CALIBRATION CERTIFICATE',
-    textStartX,
-    y + 8.5
-  );
+  doc.setFontSize(14);
+  doc.text('CALIBRATION CERTIFICATE', textStartX, y + 8.5);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10.5);

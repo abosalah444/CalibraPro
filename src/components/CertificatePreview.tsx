@@ -33,9 +33,7 @@ export const CertificatePreview: React.FC<CertificatePreviewProps> = ({
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-semibold tracking-wider text-slate-200 uppercase">
-              {isSwitchCert
-                ? 'Calibration Certificate · Single-Point Switch Verification'
-                : 'Calibration Certificate'}
+              Calibration Certificate
             </p>
             <h2 className="mt-1 font-display text-lg font-bold tracking-tight text-white">
               {certificate.laboratoryName}
