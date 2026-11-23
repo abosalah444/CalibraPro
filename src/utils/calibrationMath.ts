@@ -5,10 +5,49 @@ import type {
   PlantEquipment,
   PlantEquipmentType,
   PlantStatus,
+  SetpointSpec,
   StandardStatus,
   SwitchVerificationData,
   TestReadingRow,
 } from '../types/calibration';
+
+export function isStandardLinearSetpoints(
+  setpoints: SetpointSpec[],
+  minIn: number,
+  maxIn: number,
+  minOut: number,
+  maxOut: number
+): boolean {
+  if (setpoints.length !== 5) return false;
+  const fracs = [0, 0.25, 0.5, 0.75, 1];
+  return fracs.every((pct, idx) => {
+    const expectedIn = Number((minIn + (maxIn - minIn) * pct).toFixed(3));
+    const expectedOut = Number((minOut + (maxOut - minOut) * pct).toFixed(3));
+    return (
+      Math.abs(setpoints[idx].nominalInput - expectedIn) < 0.02 &&
+      Math.abs(setpoints[idx].expectedOutput - expectedOut) < 0.02
+    );
+  });
+}
+
+export function isStaleZeroToHundredSetpoints(
+  plant: Pick<
+    PlantEquipment,
+    'rangeMin' | 'rangeMax' | 'outputRangeMin' | 'outputRangeMax' | 'setpoints'
+  >
+): boolean {
+  if (!plant.setpoints || plant.setpoints.length === 0) return true;
+  if (plant.rangeMin === 0 && plant.rangeMax === 100) return false;
+  return (
+    isStandardLinearSetpoints(
+      plant.setpoints,
+      0,
+      100,
+      plant.outputRangeMin,
+      plant.outputRangeMax
+    ) || isStandardLinearSetpoints(plant.setpoints, 0, 100, 4, 20)
+  );
+}
 
 export function getPlantEquipmentType(
   item?: { equipmentType?: PlantEquipmentType; category?: string } | null

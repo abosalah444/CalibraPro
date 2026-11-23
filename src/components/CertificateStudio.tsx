@@ -30,6 +30,7 @@ import {
   formatSignedNumber,
   generateTypedSignatureDataUrl,
   getPlantEquipmentType,
+  isStaleZeroToHundredSetpoints,
 } from '../utils/calibrationMath';
 import { exportCertificateToPdf } from '../utils/pdfGenerator';
 import type { ParsedTxtCalibrationReport } from '../utils/txtCalibrationParser';
@@ -67,8 +68,11 @@ const DEFAULT_SWITCH_REMARKS =
 
 function buildInitialReadings(plant: PlantEquipment | null): TestReadingRow[] {
   if (!plant) return [];
+  const primaryInUnit =
+    plant.rangeUnit?.trim() || plant.switchSpec?.unit?.trim() || 'bar';
+
   if (getPlantEquipmentType(plant) === 'switch') {
-    const unit = plant.switchSpec?.unit || plant.rangeUnit || 'bar';
+    const unit = primaryInUnit;
     const trip =
       plant.switchSpec?.tripSetpoint ??
       plant.setpoints[0]?.nominalInput ??
@@ -92,13 +96,48 @@ function buildInitialReadings(plant: PlantEquipment | null): TestReadingRow[] {
       },
     ];
   }
+
+  const primaryOutUnit = plant.outputUnit?.trim() || 'mA';
+  if (isStaleZeroToHundredSetpoints(plant)) {
+    const fractions = [
+      { pct: 0, label: '0% Zero' },
+      { pct: 0.25, label: '25% Span' },
+      { pct: 0.5, label: '50% Mid' },
+      { pct: 0.75, label: '75% Span' },
+      { pct: 1, label: '100% Full' },
+    ];
+    const tol = plant.setpoints?.[0]?.tolerancePlusMinus ?? 0.08;
+    return fractions.map((f, idx) => {
+      const nomIn = Number(
+        (plant.rangeMin + (plant.rangeMax - plant.rangeMin) * f.pct).toFixed(3)
+      );
+      const expOut = Number(
+        (
+          plant.outputRangeMin +
+          (plant.outputRangeMax - plant.outputRangeMin) * f.pct
+        ).toFixed(3)
+      );
+      return {
+        id: `sp-${Date.now()}-${idx}`,
+        label: f.label,
+        nominalInput: nomIn,
+        inputUnit: primaryInUnit,
+        expectedOutput: expOut,
+        outputUnit: primaryOutUnit,
+        asFound: expOut.toFixed(2),
+        asLeft: expOut.toFixed(2),
+        tolerance: tol,
+      };
+    });
+  }
+
   return plant.setpoints.map((sp) => ({
     id: `${sp.id}-${Date.now().toString().slice(-4)}`,
     label: sp.label,
     nominalInput: sp.nominalInput,
-    inputUnit: sp.inputUnit,
+    inputUnit: plant.rangeUnit?.trim() || sp.inputUnit || 'bar',
     expectedOutput: sp.expectedOutput,
-    outputUnit: sp.outputUnit,
+    outputUnit: plant.outputUnit?.trim() || sp.outputUnit || 'mA',
     asFound: sp.expectedOutput.toFixed(2),
     asLeft: sp.expectedOutput.toFixed(2),
     tolerance: sp.tolerancePlusMinus,
@@ -550,10 +589,10 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
       {
         id: `row-${Date.now()}`,
         label: `Point ${prev.length + 1}`,
-        nominalInput: last ? last.nominalInput : 0,
-        inputUnit: last ? last.inputUnit : activePlant?.rangeUnit || 'bar',
-        expectedOutput: last ? last.expectedOutput : 4,
-        outputUnit: last ? last.outputUnit : activePlant?.outputUnit || 'mA',
+        nominalInput: last ? last.nominalInput : activePlant?.rangeMin ?? 0,
+        inputUnit: activePlant?.rangeUnit?.trim() || last?.inputUnit || 'bar',
+        expectedOutput: last ? last.expectedOutput : activePlant?.outputRangeMin ?? 4,
+        outputUnit: activePlant?.outputUnit?.trim() || last?.outputUnit || 'mA',
         asFound: '',
         asLeft: '',
         tolerance: last ? last.tolerance : 0.08,

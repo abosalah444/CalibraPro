@@ -170,6 +170,8 @@ export default function App() {
     }
     const created = (await res.json()) as PlantEquipment;
     setPlantEquipment((prev) => [created, ...prev]);
+    setSelectedPlantId(created.id);
+    setStudioKey((k) => k + 1);
     return created;
   };
 
@@ -185,6 +187,9 @@ export default function App() {
     }
     const updated = (await res.json()) as PlantEquipment;
     setPlantEquipment((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    if (selectedPlantId === updated.id) {
+      setStudioKey((k) => k + 1);
+    }
     return updated;
   };
 

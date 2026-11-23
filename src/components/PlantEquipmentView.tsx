@@ -24,6 +24,8 @@ import {
   computePlantStatus,
   getPlantEquipmentType,
   getPlantEquipmentTypeLabel,
+  isStaleZeroToHundredSetpoints,
+  isStandardLinearSetpoints,
 } from '../utils/calibrationMath';
 import { ExcelBulkUploadModal } from './ExcelBulkUploadModal';
 import { PlantEquipmentDropdown } from './RichEquipmentDropdown';
@@ -133,6 +135,7 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
   const [bulkNotice, setBulkNotice] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<PlantEquipment, 'id'>>(EMPTY_PLANT);
+  const [setpointsTouched, setSetpointsTouched] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -180,6 +183,7 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
 
   const openCreateModal = () => {
     setEditingId(null);
+    setSetpointsTouched(false);
     const today = new Date().toISOString().slice(0, 10);
     setForm({
       ...EMPTY_PLANT,
@@ -197,7 +201,38 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
     const resolvedType = getPlantEquipmentType(item);
     const fallbackTrip = item.setpoints[0]?.nominalInput ?? Number(((item.rangeMin + item.rangeMax) / 2).toFixed(2));
     const fallbackTol = item.setpoints[0]?.tolerancePlusMinus ?? 0.3;
+    const isLinearOrStale =
+      resolvedType === 'transmitter' &&
+      (isStaleZeroToHundredSetpoints(item) ||
+        isStandardLinearSetpoints(
+          item.setpoints,
+          item.rangeMin,
+          item.rangeMax,
+          item.outputRangeMin,
+          item.outputRangeMax
+        ));
+    const hydratedSetpoints =
+      resolvedType === 'transmitter' && isStaleZeroToHundredSetpoints(item)
+        ? buildDefaultSetpoints(
+            item.rangeMin,
+            item.rangeMax,
+            item.rangeUnit || 'bar',
+            item.outputRangeMin,
+            item.outputRangeMax,
+            item.outputUnit || 'mA',
+            item.setpoints[0]?.tolerancePlusMinus ?? 0.08
+          )
+        : item.setpoints.map((s) => ({
+            ...s,
+            inputUnit: item.rangeUnit || s.inputUnit,
+            outputUnit:
+              resolvedType === 'switch'
+                ? item.rangeUnit || s.outputUnit
+                : item.outputUnit || s.outputUnit,
+          }));
+
     setEditingId(item.id);
+    setSetpointsTouched(!isLinearOrStale);
     setForm({
       assetId: item.assetId,
       tagName: item.tagName,
@@ -230,7 +265,7 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
       lastCalibrationDate: item.lastCalibrationDate,
       nextDueDate: item.nextDueDate,
       status: item.status,
-      setpoints: item.setpoints.map((s) => ({ ...s })),
+      setpoints: hydratedSetpoints,
     });
     setErrorMsg(null);
     setModalOpen(true);
@@ -269,6 +304,9 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
       const nextOutMin = form.outputUnit === 'Contact' ? 4 : form.outputRangeMin;
       const nextOutMax = form.outputUnit === 'Contact' ? 20 : form.outputRangeMax;
       const nextOutUnit = form.outputUnit === 'Contact' ? 'mA' : form.outputUnit;
+      if (form.setpoints.length <= 1) {
+        setSetpointsTouched(false);
+      }
       setForm({
         ...form,
         equipmentType: 'transmitter',
@@ -308,22 +346,68 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
     }
 
     const isSwitch = form.equipmentType === 'switch';
+    const normalizedRangeMin = Number.isFinite(form.rangeMin) ? form.rangeMin : 0;
+    const normalizedRangeMax = Number.isFinite(form.rangeMax) ? form.rangeMax : 100;
+    const normalizedOutMin = Number.isFinite(form.outputRangeMin)
+      ? form.outputRangeMin
+      : 4;
+    const normalizedOutMax = Number.isFinite(form.outputRangeMax)
+      ? form.outputRangeMax
+      : 20;
+    const normalizedRangeUnit = form.rangeUnit.trim() || 'bar';
+    const normalizedOutputUnit = isSwitch
+      ? normalizedRangeUnit
+      : form.outputUnit.trim() || 'mA';
+
     const activeSwitchSpec: SwitchSpec | undefined = isSwitch
       ? {
           tripDirection: form.switchSpec?.tripDirection || 'Rising (High)',
           normalContact: form.switchSpec?.normalContact || 'NC (Normally Closed)',
-          tripSetpoint: form.switchSpec?.tripSetpoint ?? form.rangeMax,
+          tripSetpoint: form.switchSpec?.tripSetpoint ?? normalizedRangeMax,
           ...(form.switchSpec?.resetPoint !== undefined &&
           !Number.isNaN(form.switchSpec.resetPoint)
             ? { resetPoint: form.switchSpec.resetPoint }
             : {}),
           tolerancePlusMinus: form.switchSpec?.tolerancePlusMinus ?? 0.3,
-          unit: form.rangeUnit || 'bar',
+          unit: normalizedRangeUnit,
         }
       : undefined;
 
+    const needsRangeRegen =
+      !isSwitch &&
+      (!setpointsTouched ||
+        isStaleZeroToHundredSetpoints({
+          rangeMin: normalizedRangeMin,
+          rangeMax: normalizedRangeMax,
+          outputRangeMin: normalizedOutMin,
+          outputRangeMax: normalizedOutMax,
+          setpoints: form.setpoints,
+        }));
+
+    const syncedTransmitterSetpoints = needsRangeRegen
+      ? buildDefaultSetpoints(
+          normalizedRangeMin,
+          normalizedRangeMax,
+          normalizedRangeUnit,
+          normalizedOutMin,
+          normalizedOutMax,
+          normalizedOutputUnit,
+          form.setpoints[0]?.tolerancePlusMinus ?? 0.08
+        )
+      : form.setpoints.map((sp) => ({
+          ...sp,
+          inputUnit: normalizedRangeUnit,
+          outputUnit: normalizedOutputUnit,
+        }));
+
     const payload: Omit<PlantEquipment, 'id'> = {
       ...form,
+      rangeMin: normalizedRangeMin,
+      rangeMax: normalizedRangeMax,
+      outputRangeMin: isSwitch ? 0 : normalizedOutMin,
+      outputRangeMax: isSwitch ? 1 : normalizedOutMax,
+      rangeUnit: normalizedRangeUnit,
+      outputUnit: isSwitch ? 'Contact' : normalizedOutputUnit,
       equipmentType: isSwitch ? 'switch' : 'transmitter',
       switchSpec: activeSwitchSpec,
       setpoints:
@@ -333,7 +417,7 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
               activeSwitchSpec.unit,
               activeSwitchSpec.tolerancePlusMinus
             )
-          : form.setpoints,
+          : syncedTransmitterSetpoints,
     };
 
     setSaving(true);
@@ -449,7 +533,7 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
                       {selectedAsset.setpoints
                         .map(
                           (s) =>
-                            `${s.nominalInput}${s.inputUnit}→${s.expectedOutput}${s.outputUnit}`
+                            `${s.nominalInput}${selectedAsset.rangeUnit || s.inputUnit}→${s.expectedOutput}${selectedAsset.outputUnit || s.outputUnit}`
                         )
                         .join(' | ')}
                     </span>
@@ -1106,9 +1190,35 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
                         type="number"
                         step="any"
                         value={form.rangeMin}
-                        onChange={(e) =>
-                          setForm({ ...form, rangeMin: Number(e.target.value) })
-                        }
+                        onChange={(e) => {
+                          const rangeMin = Number(e.target.value);
+                          setForm((prev) => {
+                            const shouldSync =
+                              !setpointsTouched ||
+                              isStandardLinearSetpoints(
+                                prev.setpoints,
+                                prev.rangeMin,
+                                prev.rangeMax,
+                                prev.outputRangeMin,
+                                prev.outputRangeMax
+                              );
+                            return {
+                              ...prev,
+                              rangeMin,
+                              setpoints: shouldSync
+                                ? buildDefaultSetpoints(
+                                    rangeMin,
+                                    prev.rangeMax,
+                                    prev.rangeUnit,
+                                    prev.outputRangeMin,
+                                    prev.outputRangeMax,
+                                    prev.outputUnit,
+                                    prev.setpoints[0]?.tolerancePlusMinus ?? 0.08
+                                  )
+                                : prev.setpoints,
+                            };
+                          });
+                        }}
                         className="w-full rounded border border-slate-300 px-2 py-1.5 font-mono"
                       />
                     </div>
@@ -1120,9 +1230,35 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
                         type="number"
                         step="any"
                         value={form.rangeMax}
-                        onChange={(e) =>
-                          setForm({ ...form, rangeMax: Number(e.target.value) })
-                        }
+                        onChange={(e) => {
+                          const rangeMax = Number(e.target.value);
+                          setForm((prev) => {
+                            const shouldSync =
+                              !setpointsTouched ||
+                              isStandardLinearSetpoints(
+                                prev.setpoints,
+                                prev.rangeMin,
+                                prev.rangeMax,
+                                prev.outputRangeMin,
+                                prev.outputRangeMax
+                              );
+                            return {
+                              ...prev,
+                              rangeMax,
+                              setpoints: shouldSync
+                                ? buildDefaultSetpoints(
+                                    prev.rangeMin,
+                                    rangeMax,
+                                    prev.rangeUnit,
+                                    prev.outputRangeMin,
+                                    prev.outputRangeMax,
+                                    prev.outputUnit,
+                                    prev.setpoints[0]?.tolerancePlusMinus ?? 0.08
+                                  )
+                                : prev.setpoints,
+                            };
+                          });
+                        }}
                         className="w-full rounded border border-slate-300 px-2 py-1.5 font-mono"
                       />
                     </div>
@@ -1133,9 +1269,17 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
                       <input
                         type="text"
                         value={form.rangeUnit}
-                        onChange={(e) =>
-                          setForm({ ...form, rangeUnit: e.target.value })
-                        }
+                        onChange={(e) => {
+                          const rangeUnit = e.target.value;
+                          setForm((prev) => ({
+                            ...prev,
+                            rangeUnit,
+                            setpoints: prev.setpoints.map((sp) => ({
+                              ...sp,
+                              inputUnit: rangeUnit,
+                            })),
+                          }));
+                        }}
                         className="w-full rounded border border-slate-300 px-2 py-1.5 font-mono"
                       />
                     </div>
@@ -1147,12 +1291,35 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
                         type="number"
                         step="any"
                         value={form.outputRangeMin}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            outputRangeMin: Number(e.target.value),
-                          })
-                        }
+                        onChange={(e) => {
+                          const outputRangeMin = Number(e.target.value);
+                          setForm((prev) => {
+                            const shouldSync =
+                              !setpointsTouched ||
+                              isStandardLinearSetpoints(
+                                prev.setpoints,
+                                prev.rangeMin,
+                                prev.rangeMax,
+                                prev.outputRangeMin,
+                                prev.outputRangeMax
+                              );
+                            return {
+                              ...prev,
+                              outputRangeMin,
+                              setpoints: shouldSync
+                                ? buildDefaultSetpoints(
+                                    prev.rangeMin,
+                                    prev.rangeMax,
+                                    prev.rangeUnit,
+                                    outputRangeMin,
+                                    prev.outputRangeMax,
+                                    prev.outputUnit,
+                                    prev.setpoints[0]?.tolerancePlusMinus ?? 0.08
+                                  )
+                                : prev.setpoints,
+                            };
+                          });
+                        }}
                         className="w-full rounded border border-slate-300 px-2 py-1.5 font-mono"
                       />
                     </div>
@@ -1164,12 +1331,35 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
                         type="number"
                         step="any"
                         value={form.outputRangeMax}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            outputRangeMax: Number(e.target.value),
-                          })
-                        }
+                        onChange={(e) => {
+                          const outputRangeMax = Number(e.target.value);
+                          setForm((prev) => {
+                            const shouldSync =
+                              !setpointsTouched ||
+                              isStandardLinearSetpoints(
+                                prev.setpoints,
+                                prev.rangeMin,
+                                prev.rangeMax,
+                                prev.outputRangeMin,
+                                prev.outputRangeMax
+                              );
+                            return {
+                              ...prev,
+                              outputRangeMax,
+                              setpoints: shouldSync
+                                ? buildDefaultSetpoints(
+                                    prev.rangeMin,
+                                    prev.rangeMax,
+                                    prev.rangeUnit,
+                                    prev.outputRangeMin,
+                                    outputRangeMax,
+                                    prev.outputUnit,
+                                    prev.setpoints[0]?.tolerancePlusMinus ?? 0.08
+                                  )
+                                : prev.setpoints,
+                            };
+                          });
+                        }}
                         className="w-full rounded border border-slate-300 px-2 py-1.5 font-mono"
                       />
                     </div>
@@ -1180,9 +1370,17 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
                       <input
                         type="text"
                         value={form.outputUnit}
-                        onChange={(e) =>
-                          setForm({ ...form, outputUnit: e.target.value })
-                        }
+                        onChange={(e) => {
+                          const outputUnit = e.target.value;
+                          setForm((prev) => ({
+                            ...prev,
+                            outputUnit,
+                            setpoints: prev.setpoints.map((sp) => ({
+                              ...sp,
+                              outputUnit,
+                            })),
+                          }));
+                        }}
                         className="w-full rounded border border-slate-300 px-2 py-1.5 font-mono"
                       />
                     </div>
@@ -1197,7 +1395,8 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() =>
+                          onClick={() => {
+                            setSetpointsTouched(false);
                             setForm({
                               ...form,
                               setpoints: buildDefaultSetpoints(
@@ -1208,15 +1407,16 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
                                 form.outputRangeMax,
                                 form.outputUnit
                               ),
-                            })
-                          }
+                            });
+                          }}
                           className="rounded border border-slate-300 px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
                         >
                           Auto-Generate 5-Point (0–100%)
                         </button>
                         <button
                           type="button"
-                          onClick={() =>
+                          onClick={() => {
+                            setSetpointsTouched(true);
                             setForm({
                               ...form,
                               setpoints: [
@@ -1231,8 +1431,8 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
                                   tolerancePlusMinus: 0.08,
                                 },
                               ],
-                            })
-                          }
+                            });
+                          }}
                           className="rounded border border-slate-300 px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
                         >
                           + Add Setpoint
@@ -1250,47 +1450,61 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
                             type="text"
                             value={sp.label}
                             onChange={(e) => {
+                              setSetpointsTouched(true);
                               const next = [...form.setpoints];
                               next[idx] = { ...sp, label: e.target.value };
                               setForm({ ...form, setpoints: next });
                             }}
                             className="col-span-3 rounded border border-slate-200 px-2 py-1 font-sans"
                           />
-                          <input
-                            type="number"
-                            step="any"
-                            value={sp.nominalInput}
-                            onChange={(e) => {
-                              const next = [...form.setpoints];
-                              next[idx] = {
-                                ...sp,
-                                nominalInput: Number(e.target.value),
-                              };
-                              setForm({ ...form, setpoints: next });
-                            }}
-                            className="col-span-3 rounded border border-slate-200 px-2 py-1"
-                            title="Nominal Input"
-                          />
-                          <input
-                            type="number"
-                            step="any"
-                            value={sp.expectedOutput}
-                            onChange={(e) => {
-                              const next = [...form.setpoints];
-                              next[idx] = {
-                                ...sp,
-                                expectedOutput: Number(e.target.value),
-                              };
-                              setForm({ ...form, setpoints: next });
-                            }}
-                            className="col-span-3 rounded border border-slate-200 px-2 py-1"
-                            title="Expected Output"
-                          />
+                          <div className="col-span-3 flex items-center gap-1">
+                            <input
+                              type="number"
+                              step="any"
+                              value={sp.nominalInput}
+                              onChange={(e) => {
+                                setSetpointsTouched(true);
+                                const next = [...form.setpoints];
+                                next[idx] = {
+                                  ...sp,
+                                  nominalInput: Number(e.target.value),
+                                };
+                                setForm({ ...form, setpoints: next });
+                              }}
+                              className="w-full rounded border border-slate-200 px-2 py-1"
+                              title="Nominal Input"
+                            />
+                            <span className="shrink-0 text-[10px] text-slate-400">
+                              {form.rangeUnit || sp.inputUnit}
+                            </span>
+                          </div>
+                          <div className="col-span-3 flex items-center gap-1">
+                            <input
+                              type="number"
+                              step="any"
+                              value={sp.expectedOutput}
+                              onChange={(e) => {
+                                setSetpointsTouched(true);
+                                const next = [...form.setpoints];
+                                next[idx] = {
+                                  ...sp,
+                                  expectedOutput: Number(e.target.value),
+                                };
+                                setForm({ ...form, setpoints: next });
+                              }}
+                              className="w-full rounded border border-slate-200 px-2 py-1"
+                              title="Expected Output"
+                            />
+                            <span className="shrink-0 text-[10px] text-slate-400">
+                              {form.outputUnit || sp.outputUnit}
+                            </span>
+                          </div>
                           <input
                             type="number"
                             step="any"
                             value={sp.tolerancePlusMinus}
                             onChange={(e) => {
+                              setSetpointsTouched(true);
                               const next = [...form.setpoints];
                               next[idx] = {
                                 ...sp,
@@ -1303,12 +1517,13 @@ export const PlantEquipmentView: React.FC<PlantEquipmentViewProps> = ({
                           />
                           <button
                             type="button"
-                            onClick={() =>
+                            onClick={() => {
+                              setSetpointsTouched(true);
                               setForm({
                                 ...form,
                                 setpoints: form.setpoints.filter((_, i) => i !== idx),
-                              })
-                            }
+                              });
+                            }}
                             className="col-span-1 flex justify-center p-1 text-slate-400 hover:text-rose-600 cursor-pointer"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
