@@ -36,6 +36,7 @@ import { exportCertificateToPdf } from '../utils/pdfGenerator';
 import type { ParsedTxtCalibrationReport } from '../utils/txtCalibrationParser';
 import { CertificatePreview } from './CertificatePreview';
 import { PlantDeadlinesWidget } from './PlantDeadlinesWidget';
+import { PlantEquipmentModal } from './PlantEquipmentModal';
 import {
   CalibrationStandardDropdown,
   PlantEquipmentDropdown,
@@ -54,6 +55,7 @@ interface CertificateStudioProps {
   onSelectPlantId: (id: string) => void;
   onIssueCertificate: (cert: CalibrationCertificate) => Promise<void>;
   onCreateUser: (user: CalibrationUser) => Promise<void>;
+  onCreatePlant?: (item: PlantEquipment) => Promise<PlantEquipment>;
   onSaveImportedPlant?: (
     candidate: PlantEquipment,
     existingId?: string
@@ -154,6 +156,7 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
   onSelectPlantId,
   onIssueCertificate,
   onCreateUser,
+  onCreatePlant,
   onSaveImportedPlant,
   onOpenPlantView,
 }) => {
@@ -168,6 +171,7 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
     tripDetectionMode?: string;
   } | null>(null);
   const [txtModalOpen, setTxtModalOpen] = useState(false);
+  const [addPlantModalOpen, setAddPlantModalOpen] = useState(false);
 
   const activePlant = useMemo(
     () =>
@@ -678,6 +682,14 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setAddPlantModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-800 cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add new plant asset
+            </button>
             <button
               type="button"
               onClick={() => setTxtModalOpen(true)}
@@ -1357,6 +1369,26 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
           }}
         />
       )}
+      <PlantEquipmentModal
+        isOpen={addPlantModalOpen}
+        onClose={() => setAddPlantModalOpen(false)}
+        onSave={async (payload) => {
+          const candidate: PlantEquipment = {
+            ...payload,
+            id: `plt-${Date.now()}`,
+          };
+          const created = onCreatePlant
+            ? await onCreatePlant(candidate)
+            : onSaveImportedPlant
+              ? await onSaveImportedPlant(candidate)
+              : candidate;
+          handleSelectPlant(created);
+          setSaveError(null);
+          setSaveNotice(
+            `Added new plant asset ${created.assetId} (${created.tagName}) and loaded it into Certificate Studio.`
+          );
+        }}
+      />
     </div>
   );
 };

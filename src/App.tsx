@@ -171,7 +171,9 @@ export default function App() {
     const created = (await res.json()) as PlantEquipment;
     setPlantEquipment((prev) => [created, ...prev]);
     setSelectedPlantId(created.id);
-    setStudioKey((k) => k + 1);
+    if (activeView !== 'studio') {
+      setStudioKey((k) => k + 1);
+    }
     return created;
   };
 
@@ -343,6 +345,7 @@ export default function App() {
               onSelectPlantId={setSelectedPlantId}
               onIssueCertificate={handleIssueCertificate}
               onCreateUser={handleCreateUser}
+              onCreatePlant={handleCreatePlant}
               onSaveImportedPlant={handleSaveImportedPlant}
               onOpenPlantView={() => setActiveView('plant')}
             />
