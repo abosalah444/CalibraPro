@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Download,
+  FileSpreadsheet,
   FileUp,
   Plus,
   Printer,
@@ -33,8 +34,10 @@ import {
   isStaleZeroToHundredSetpoints,
 } from '../utils/calibrationMath';
 import { exportCertificateToPdf } from '../utils/pdfGenerator';
+import type { ParsedExcelCalibrationReport } from '../utils/excelCalibrationParser';
 import type { ParsedTxtCalibrationReport } from '../utils/txtCalibrationParser';
 import { CertificatePreview } from './CertificatePreview';
+import { ExcelCalibrationImportModal } from './ExcelCalibrationImportModal';
 import { PlantDeadlinesWidget } from './PlantDeadlinesWidget';
 import { PlantEquipmentModal } from './PlantEquipmentModal';
 import {
@@ -171,6 +174,7 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
     tripDetectionMode?: string;
   } | null>(null);
   const [txtModalOpen, setTxtModalOpen] = useState(false);
+  const [excelModalOpen, setExcelModalOpen] = useState(false);
   const [addPlantModalOpen, setAddPlantModalOpen] = useState(false);
 
   const activePlant = useMemo(
@@ -284,9 +288,9 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
     setSaveNotice(null);
   };
 
-  // Apply parsed .TXT calibration report into Certificate Studio
-  const handleApplyTxtReport = async (
-    report: ParsedTxtCalibrationReport,
+  // Apply parsed .TXT or Excel calibration report into Certificate Studio
+  const handleApplyImportedReport = async (
+    report: ParsedTxtCalibrationReport | ParsedExcelCalibrationReport,
     savePlantToDb: boolean
   ) => {
     const existingAsset = plantEquipment.find(
@@ -338,6 +342,54 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
       });
     } else {
       setSwitchDeadbandMeta(null);
+    }
+
+    if ('performedBy' in report && report.performedBy) {
+      const matchedTech = users.find(
+        (u) => u.fullName.trim().toLowerCase() === report.performedBy!.trim().toLowerCase()
+      );
+      if (matchedTech) {
+        setTechSignature({
+          signerName: matchedTech.fullName,
+          signerTitle: matchedTech.title,
+          licenseId: matchedTech.licenseId,
+          signedAt: new Date().toISOString(),
+          signatureDataUrl: generateTypedSignatureDataUrl(matchedTech.fullName),
+          method: 'typed',
+        });
+      } else {
+        setTechSignature((prev) => ({
+          ...prev,
+          signerName: report.performedBy!,
+          signedAt: new Date().toISOString(),
+          signatureDataUrl: generateTypedSignatureDataUrl(report.performedBy!),
+          method: 'typed',
+        }));
+      }
+    }
+
+    if ('approvedBy' in report && report.approvedBy) {
+      const matchedApprover = users.find(
+        (u) => u.fullName.trim().toLowerCase() === report.approvedBy!.trim().toLowerCase()
+      );
+      if (matchedApprover) {
+        setApproverSignature({
+          signerName: matchedApprover.fullName,
+          signerTitle: matchedApprover.title,
+          licenseId: matchedApprover.licenseId,
+          signedAt: new Date().toISOString(),
+          signatureDataUrl: generateTypedSignatureDataUrl(matchedApprover.fullName),
+          method: 'typed',
+        });
+      } else {
+        setApproverSignature((prev) => ({
+          ...prev,
+          signerName: report.approvedBy!,
+          signedAt: new Date().toISOString(),
+          signatureDataUrl: generateTypedSignatureDataUrl(report.approvedBy!),
+          method: 'typed',
+        }));
+      }
     }
 
     setSaveError(null);
@@ -689,6 +741,14 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
             >
               <Plus className="h-3.5 w-3.5" />
               Add new plant asset
+            </button>
+            <button
+              type="button"
+              onClick={() => setExcelModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded border border-emerald-700 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              Import Excel Report
             </button>
             <button
               type="button"
@@ -1347,7 +1407,7 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
           technicianSignature={techSignature}
           approverSignature={approverSignature}
           onClose={() => setTxtModalOpen(false)}
-          onApplyToStudio={handleApplyTxtReport}
+          onApplyToStudio={handleApplyImportedReport}
           onIssueCertificate={onIssueCertificate}
           onSaveImportedPlant={onSaveImportedPlant}
           onBatchIssueComplete={(issuedCerts) => {
@@ -1365,6 +1425,42 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
             setSaveError(null);
             setSaveNotice(
               `Batch converted & issued ${issuedCerts.length} certificates (${firstNo} – ${lastNo}) to the Certificate Archive.`
+            );
+          }}
+        />
+      )}
+      {excelModalOpen && (
+        <ExcelCalibrationImportModal
+          standards={standards}
+          plantEquipment={plantEquipment}
+          users={users}
+          labSettings={labSettings}
+          certificateNumber={certificateNumber}
+          procedureRef={procedureRef}
+          ambientTempC={ambientTempC}
+          relativeHumidityPct={relativeHumidityPct}
+          barometricPressureHpa={barometricPressureHpa}
+          technicianSignature={techSignature}
+          approverSignature={approverSignature}
+          onClose={() => setExcelModalOpen(false)}
+          onApplyToStudio={handleApplyImportedReport}
+          onIssueCertificate={onIssueCertificate}
+          onSaveImportedPlant={onSaveImportedPlant}
+          onBatchIssueComplete={(issuedCerts) => {
+            if (issuedCerts.length === 0) return;
+            const match = certificateNumber.match(/^(.*?)(\d+)$/);
+            if (match) {
+              const nextNum = String(
+                Number(match[2]) + issuedCerts.length
+              ).padStart(match[2].length, '0');
+              setCertificateNumber(`${match[1]}${nextNum}`);
+            }
+            const firstNo = issuedCerts[0].certificateNumber;
+            const lastNo =
+              issuedCerts[issuedCerts.length - 1].certificateNumber;
+            setSaveError(null);
+            setSaveNotice(
+              `Batch converted & issued ${issuedCerts.length} Excel reports as certificates (${firstNo} – ${lastNo}) to the Certificate Archive.`
             );
           }}
         />
