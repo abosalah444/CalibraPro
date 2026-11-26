@@ -189,7 +189,7 @@ export default function App() {
     }
     const updated = (await res.json()) as PlantEquipment;
     setPlantEquipment((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-    if (selectedPlantId === updated.id) {
+    if (activeView !== 'studio' && selectedPlantId === updated.id) {
       setStudioKey((k) => k + 1);
     }
     return updated;
@@ -346,6 +346,7 @@ export default function App() {
               onIssueCertificate={handleIssueCertificate}
               onCreateUser={handleCreateUser}
               onCreatePlant={handleCreatePlant}
+              onUpdatePlant={handleUpdatePlant}
               onSaveImportedPlant={handleSaveImportedPlant}
               onOpenPlantView={() => setActiveView('plant')}
             />

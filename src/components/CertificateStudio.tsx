@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -9,6 +9,7 @@ import {
   Printer,
   Sparkles,
   Trash2,
+  X,
 } from 'lucide-react';
 import type {
   CalibrationCertificate,
@@ -59,6 +60,7 @@ interface CertificateStudioProps {
   onIssueCertificate: (cert: CalibrationCertificate) => Promise<void>;
   onCreateUser: (user: CalibrationUser) => Promise<void>;
   onCreatePlant?: (item: PlantEquipment) => Promise<PlantEquipment>;
+  onUpdatePlant?: (item: PlantEquipment) => Promise<PlantEquipment>;
   onSaveImportedPlant?: (
     candidate: PlantEquipment,
     existingId?: string
@@ -70,6 +72,68 @@ const DEFAULT_TRANSMITTER_REMARKS =
   'Instrument tested across 5-point ascending calibration cycle. Zero and span verified within manufacturer limits.';
 const DEFAULT_SWITCH_REMARKS =
   'Single-point switch trip verification performed. Actuation setpoint and contact continuity verified within tolerance.';
+
+const UNIT_PRESETS = [
+  'bar',
+  'mbar',
+  'barg',
+  'bara',
+  'psi',
+  'psig',
+  'kPa',
+  'MPa',
+  'Pa',
+  '°C',
+  '°F',
+  'mA',
+  'V',
+  '%',
+  'mmH2O',
+  'inH2O',
+  'm³/h',
+  'kg/h',
+  'Hz',
+  'Ω',
+];
+
+interface PendingUnitPrompt {
+  plant: PlantEquipment;
+  changes: Array<{
+    label: string;
+    oldUnit: string;
+    newUnit: string;
+  }>;
+  nextInputUnit: string;
+  nextOutputUnit: string;
+}
+
+function resolvePlantUnits(plant: PlantEquipment | null): {
+  inUnit: string;
+  outUnit: string;
+} {
+  const inUnit =
+    plant?.rangeUnit?.trim() || plant?.switchSpec?.unit?.trim() || 'bar';
+  const plantIsSwitch = getPlantEquipmentType(plant) === 'switch';
+  const outUnit = plantIsSwitch
+    ? inUnit
+    : plant?.outputUnit?.trim() || 'mA';
+  return { inUnit, outUnit };
+}
+
+function escapeRegExp(val: string): string {
+  return val.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function replaceUnitToken(spec: string, oldUnit: string, newUnit: string): string {
+  const prev = oldUnit.trim();
+  const next = newUnit.trim();
+  if (!spec || !prev || !next || prev === next) return spec;
+  const pattern = new RegExp(
+    `(^|[\\s\\d±/\\-(])${escapeRegExp(prev)}(?=$|[\\s.,;)/])`,
+    'g'
+  );
+  return spec.replace(pattern, `$1${next}`);
+}
 
 function buildInitialReadings(plant: PlantEquipment | null): TestReadingRow[] {
   if (!plant) return [];
@@ -160,6 +224,7 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
   onIssueCertificate,
   onCreateUser,
   onCreatePlant,
+  onUpdatePlant,
   onSaveImportedPlant,
   onOpenPlantView,
 }) => {
@@ -177,17 +242,48 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
   const [excelModalOpen, setExcelModalOpen] = useState(false);
   const [addPlantModalOpen, setAddPlantModalOpen] = useState(false);
 
-  const activePlant = useMemo(
+  const persistedPlant = useMemo(
     () =>
-      importedPlantOverride ||
-      plantEquipment.find((p) => p.id === selectedPlantId) ||
-      plantEquipment[0] ||
-      null,
+      importedPlantOverride
+        ? plantEquipment.find(
+            (p) =>
+              p.id === importedPlantOverride.id ||
+              p.assetId.trim().toLowerCase() ===
+                importedPlantOverride.assetId.trim().toLowerCase()
+          ) || null
+        : plantEquipment.find((p) => p.id === selectedPlantId) ||
+          plantEquipment[0] ||
+          null,
     [importedPlantOverride, plantEquipment, selectedPlantId]
+  );
+
+  const activePlant = useMemo(
+    () => importedPlantOverride || persistedPlant,
+    [importedPlantOverride, persistedPlant]
   );
 
   const isSwitch = getPlantEquipmentType(activePlant) === 'switch';
   const todayStr = new Date().toISOString().slice(0, 10);
+
+  const initialUnits = resolvePlantUnits(activePlant);
+  const [studioInputUnit, setStudioInputUnit] = useState(initialUnits.inUnit);
+  const [studioOutputUnit, setStudioOutputUnit] = useState(initialUnits.outUnit);
+  const [inputUnitDraft, setInputUnitDraft] = useState(initialUnits.inUnit);
+  const [outputUnitDraft, setOutputUnitDraft] = useState(initialUnits.outUnit);
+  const committedInputUnitRef = useRef(initialUnits.inUnit);
+  const committedOutputUnitRef = useRef(initialUnits.outUnit);
+  const [pendingUnitPrompt, setPendingUnitPrompt] =
+    useState<PendingUnitPrompt | null>(null);
+  const [updatingPlantUnit, setUpdatingPlantUnit] = useState(false);
+
+  const syncStudioUnits = (nextIn: string, nextOut: string) => {
+    committedInputUnitRef.current = nextIn;
+    committedOutputUnitRef.current = nextOut;
+    setStudioInputUnit(nextIn);
+    setStudioOutputUnit(nextOut);
+    setInputUnitDraft(nextIn);
+    setOutputUnitDraft(nextOut);
+  };
 
   const [certificateNumber, setCertificateNumber] = useState(
     `CERT-2026-${1041 + nextCertSeq}`
@@ -263,6 +359,9 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
 
   // When selected plant changes, hydrate setpoints / single-point switch config & nextDueDate
   const handleSelectPlant = (plant: PlantEquipment) => {
+    const nextUnits = resolvePlantUnits(plant);
+    syncStudioUnits(nextUnits.inUnit, nextUnits.outUnit);
+    setPendingUnitPrompt(null);
     setImportedPlantOverride(null);
     setSwitchDeadbandMeta(null);
     onSelectPlantId(plant.id);
@@ -326,6 +425,20 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
 
     setReadings(report.readings);
     setRemarks(report.remarks);
+
+    const firstRow = report.readings[0];
+    const reportInUnit =
+      firstRow?.inputUnit?.trim() ||
+      report.plantAssetCandidate.rangeUnit?.trim() ||
+      'bar';
+    const reportOutUnit =
+      report.equipmentType === 'switch'
+        ? report.switchVerification?.unit?.trim() || reportInUnit
+        : firstRow?.outputUnit?.trim() ||
+          report.plantAssetCandidate.outputUnit?.trim() ||
+          'mA';
+    syncStudioUnits(reportInUnit, reportOutUnit);
+    setPendingUnitPrompt(null);
 
     if (report.equipmentType === 'switch' && report.switchVerification) {
       const sw = report.switchVerification;
@@ -481,7 +594,7 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
       tripSetpoint: pt?.expectedOutput ?? activePlant?.switchSpec?.tripSetpoint ?? 0,
       tolerancePlusMinus:
         pt?.tolerance ?? activePlant?.switchSpec?.tolerancePlusMinus ?? 0.3,
-      unit: pt?.outputUnit || activePlant?.rangeUnit || 'bar',
+      unit: pt?.outputUnit || studioInputUnit || activePlant?.rangeUnit || 'bar',
       asFoundTrip: pt?.asFound || '',
       asLeftTrip: pt?.asLeft || '',
       ...(switchAsFoundReset.trim() ? { asFoundReset: switchAsFoundReset.trim() } : {}),
@@ -545,6 +658,19 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
     approverSignature.signerName,
   ]);
 
+  const effectiveToleranceSpec = useMemo(() => {
+    if (!activePlant) return '—';
+    let spec = replaceUnitToken(
+      activePlant.toleranceSpec,
+      activePlant.rangeUnit,
+      studioInputUnit
+    );
+    if (!isSwitch) {
+      spec = replaceUnitToken(spec, activePlant.outputUnit, studioOutputUnit);
+    }
+    return spec;
+  }, [activePlant, isSwitch, studioInputUnit, studioOutputUnit]);
+
   const draftCertificate: CalibrationCertificate = useMemo(
     () => ({
       id: `cert-draft`,
@@ -566,11 +692,11 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
             category: activePlant.category,
             equipmentType: isSwitch ? 'switch' : 'transmitter',
             frequencyLabel: activePlant.frequencyLabel,
-            rangeText: `${activePlant.rangeMin} – ${activePlant.rangeMax} ${activePlant.rangeUnit}`,
+            rangeText: `${activePlant.rangeMin} – ${activePlant.rangeMax} ${studioInputUnit}`,
             outputRangeText: isSwitch
               ? `${switchTripDirection} · ${switchNormalContact}`
-              : `${activePlant.outputRangeMin} – ${activePlant.outputRangeMax} ${activePlant.outputUnit}`,
-            toleranceSpec: activePlant.toleranceSpec,
+              : `${activePlant.outputRangeMin} – ${activePlant.outputRangeMax} ${studioOutputUnit}`,
+            toleranceSpec: effectiveToleranceSpec,
           }
         : {
             assetId: 'N/A',
@@ -610,6 +736,9 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
       nextDueDate,
       activePlant,
       isSwitch,
+      studioInputUnit,
+      studioOutputUnit,
+      effectiveToleranceSpec,
       switchTripDirection,
       switchNormalContact,
       effectiveStandardsSnapshot,
@@ -646,14 +775,286 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
         id: `row-${Date.now()}`,
         label: `Point ${prev.length + 1}`,
         nominalInput: last ? last.nominalInput : activePlant?.rangeMin ?? 0,
-        inputUnit: activePlant?.rangeUnit?.trim() || last?.inputUnit || 'bar',
+        inputUnit: studioInputUnit || last?.inputUnit || 'bar',
         expectedOutput: last ? last.expectedOutput : activePlant?.outputRangeMin ?? 4,
-        outputUnit: activePlant?.outputUnit?.trim() || last?.outputUnit || 'mA',
+        outputUnit: studioOutputUnit || last?.outputUnit || 'mA',
         asFound: '',
         asLeft: '',
         tolerance: last ? last.tolerance : 0.08,
       },
     ]);
+  };
+
+  const buildUnitChangesList = (
+    plant: PlantEquipment,
+    nextIn: string,
+    nextOut: string
+  ): PendingUnitPrompt['changes'] => {
+    const plantIsSwitch = getPlantEquipmentType(plant) === 'switch';
+    const dbUnits = resolvePlantUnits(plant);
+    const changes: PendingUnitPrompt['changes'] = [];
+    if (plantIsSwitch) {
+      if (nextIn !== dbUnits.inUnit) {
+        changes.push({
+          label: 'Engineering Unit',
+          oldUnit: dbUnits.inUnit,
+          newUnit: nextIn,
+        });
+      }
+    } else {
+      if (nextIn !== dbUnits.inUnit) {
+        changes.push({
+          label: 'Input Range Unit',
+          oldUnit: dbUnits.inUnit,
+          newUnit: nextIn,
+        });
+      }
+      if (nextOut !== dbUnits.outUnit) {
+        changes.push({
+          label: 'Output Signal Unit',
+          oldUnit: dbUnits.outUnit,
+          newUnit: nextOut,
+        });
+      }
+    }
+    return changes;
+  };
+
+  const commitUnitChanges = (scope: 'switch' | 'input' | 'output' | 'both') => {
+    if (scope === 'switch' || isSwitch) {
+      const nextUnit = inputUnitDraft.trim();
+      if (!nextUnit) {
+        setInputUnitDraft(committedInputUnitRef.current);
+        return;
+      }
+      if (nextUnit === committedInputUnitRef.current) {
+        return;
+      }
+      syncStudioUnits(nextUnit, nextUnit);
+      setReadings((prev) =>
+        prev.map((row) => ({
+          ...row,
+          inputUnit: nextUnit,
+          outputUnit: nextUnit,
+        }))
+      );
+      if (importedPlantOverride) {
+        setImportedPlantOverride((prev) =>
+          prev
+            ? {
+                ...prev,
+                rangeUnit: nextUnit,
+                toleranceSpec: replaceUnitToken(
+                  prev.toleranceSpec,
+                  prev.rangeUnit,
+                  nextUnit
+                ),
+                switchSpec: prev.switchSpec
+                  ? { ...prev.switchSpec, unit: nextUnit }
+                  : undefined,
+                setpoints: prev.setpoints.map((sp) => ({
+                  ...sp,
+                  inputUnit: nextUnit,
+                  outputUnit: nextUnit,
+                })),
+              }
+            : null
+        );
+      }
+
+      if (persistedPlant && onUpdatePlant) {
+        const changes = buildUnitChangesList(persistedPlant, nextUnit, nextUnit);
+        if (changes.length > 0) {
+          setPendingUnitPrompt({
+            plant: persistedPlant,
+            changes,
+            nextInputUnit: nextUnit,
+            nextOutputUnit: nextUnit,
+          });
+        }
+      }
+      return;
+    }
+
+    const rawIn = inputUnitDraft.trim();
+    const rawOut = outputUnitDraft.trim();
+    if (!rawIn) setInputUnitDraft(committedInputUnitRef.current);
+    if (!rawOut) setOutputUnitDraft(committedOutputUnitRef.current);
+
+    const nextIn =
+      scope === 'output'
+        ? committedInputUnitRef.current
+        : rawIn || committedInputUnitRef.current;
+    const nextOut =
+      scope === 'input'
+        ? committedOutputUnitRef.current
+        : rawOut || committedOutputUnitRef.current;
+
+    const inChanged = nextIn !== committedInputUnitRef.current;
+    const outChanged = nextOut !== committedOutputUnitRef.current;
+    if (!inChanged && !outChanged) {
+      return;
+    }
+
+    syncStudioUnits(nextIn, nextOut);
+    setReadings((prev) =>
+      prev.map((row) => ({
+        ...row,
+        inputUnit: nextIn,
+        outputUnit: nextOut,
+      }))
+    );
+
+    if (importedPlantOverride) {
+      setImportedPlantOverride((prev) =>
+        prev
+          ? {
+              ...prev,
+              rangeUnit: nextIn,
+              outputUnit: nextOut,
+              toleranceSpec: replaceUnitToken(
+                replaceUnitToken(prev.toleranceSpec, prev.rangeUnit, nextIn),
+                prev.outputUnit,
+                nextOut
+              ),
+              setpoints: prev.setpoints.map((sp) => ({
+                ...sp,
+                inputUnit: nextIn,
+                outputUnit: nextOut,
+              })),
+            }
+          : null
+      );
+    }
+
+    if (persistedPlant && onUpdatePlant) {
+      const changes = buildUnitChangesList(persistedPlant, nextIn, nextOut);
+      if (changes.length > 0) {
+        setPendingUnitPrompt({
+          plant: persistedPlant,
+          changes,
+          nextInputUnit: nextIn,
+          nextOutputUnit: nextOut,
+        });
+      }
+    }
+  };
+
+  const handleOpenSyncUnitPrompt = () => {
+    if (!persistedPlant || !onUpdatePlant) return;
+    const changes = buildUnitChangesList(
+      persistedPlant,
+      studioInputUnit,
+      studioOutputUnit
+    );
+    if (changes.length === 0) return;
+    setPendingUnitPrompt({
+      plant: persistedPlant,
+      changes,
+      nextInputUnit: studioInputUnit,
+      nextOutputUnit: studioOutputUnit,
+    });
+  };
+
+  const handleConfirmUpdatePlantUnit = async () => {
+    if (!pendingUnitPrompt || !onUpdatePlant) return;
+    const { plant, nextInputUnit, nextOutputUnit } = pendingUnitPrompt;
+    const plantIsSwitch = getPlantEquipmentType(plant) === 'switch';
+    setUpdatingPlantUnit(true);
+    try {
+      let nextToleranceSpec = replaceUnitToken(
+        plant.toleranceSpec,
+        plant.rangeUnit,
+        nextInputUnit
+      );
+      if (!plantIsSwitch) {
+        nextToleranceSpec = replaceUnitToken(
+          nextToleranceSpec,
+          plant.outputUnit,
+          nextOutputUnit
+        );
+      }
+
+      const updatedPayload: PlantEquipment = {
+        ...plant,
+        rangeUnit: nextInputUnit,
+        outputUnit: plantIsSwitch ? plant.outputUnit || 'Contact' : nextOutputUnit,
+        toleranceSpec: nextToleranceSpec,
+        ...(plantIsSwitch
+          ? {
+              switchSpec: {
+                tripDirection: plant.switchSpec?.tripDirection || switchTripDirection,
+                normalContact: plant.switchSpec?.normalContact || switchNormalContact,
+                tripSetpoint:
+                  plant.switchSpec?.tripSetpoint ??
+                  activeReadings[0]?.expectedOutput ??
+                  plant.rangeMax,
+                ...(plant.switchSpec?.resetPoint !== undefined
+                  ? { resetPoint: plant.switchSpec.resetPoint }
+                  : {}),
+                tolerancePlusMinus:
+                  plant.switchSpec?.tolerancePlusMinus ??
+                  activeReadings[0]?.tolerance ??
+                  0.3,
+                unit: nextInputUnit,
+              },
+            }
+          : {}),
+        setpoints: plant.setpoints.map((sp) => ({
+          ...sp,
+          inputUnit: nextInputUnit,
+          outputUnit: plantIsSwitch ? nextInputUnit : nextOutputUnit,
+        })),
+      };
+
+      const saved = await onUpdatePlant(updatedPayload);
+      if (
+        importedPlantOverride &&
+        importedPlantOverride.assetId.trim().toLowerCase() ===
+          saved.assetId.trim().toLowerCase()
+      ) {
+        setImportedPlantOverride((prev) =>
+          prev
+            ? {
+                ...prev,
+                rangeUnit: saved.rangeUnit,
+                outputUnit: saved.outputUnit,
+                toleranceSpec: saved.toleranceSpec,
+                switchSpec: saved.switchSpec,
+              }
+            : null
+        );
+      }
+      setPendingUnitPrompt(null);
+      setSaveError(null);
+      setSaveNotice(
+        plantIsSwitch
+          ? `Updated unit of measure to "${nextInputUnit}" in Certificate Studio and saved to plant asset ${saved.assetId}.`
+          : `Updated units (${nextInputUnit} / ${nextOutputUnit}) in Certificate Studio and saved to plant asset ${saved.assetId}.`
+      );
+    } catch (err) {
+      setSaveError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to update unit of measure in plant asset.'
+      );
+      setPendingUnitPrompt(null);
+    } finally {
+      setUpdatingPlantUnit(false);
+    }
+  };
+
+  const handleKeepCertificateUnitOnly = () => {
+    if (!pendingUnitPrompt) return;
+    const { plant, nextInputUnit, nextOutputUnit } = pendingUnitPrompt;
+    const plantIsSwitch = getPlantEquipmentType(plant) === 'switch';
+    setPendingUnitPrompt(null);
+    setSaveError(null);
+    setSaveNotice(
+      plantIsSwitch
+        ? `Changed unit to "${nextInputUnit}" for this certificate only. Plant asset ${plant.assetId} remains "${plant.rangeUnit}".`
+        : `Changed units (${nextInputUnit} / ${nextOutputUnit}) for this certificate only. Plant asset ${plant.assetId} remains unchanged.`
+    );
   };
 
   const removeReadingRow = (rowId: string) => {
@@ -947,6 +1348,150 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
                 )}
               </div>
             </div>
+
+            {activePlant && (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2">
+                <datalist id="studio-unit-presets">
+                  {UNIT_PRESETS.map((u) => (
+                    <option key={u} value={u} />
+                  ))}
+                </datalist>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-[11px] font-semibold text-slate-700">
+                    Unit of Measure:
+                  </span>
+                  {isSwitch ? (
+                    <div className="flex items-center gap-1.5">
+                      <label
+                        htmlFor="studio-switch-unit"
+                        className="text-[11px] text-slate-500"
+                      >
+                        Eng. Unit
+                      </label>
+                      <input
+                        id="studio-switch-unit"
+                        type="text"
+                        list="studio-unit-presets"
+                        value={inputUnitDraft}
+                        onChange={(e) => setInputUnitDraft(e.target.value)}
+                        onBlur={() => commitUnitChanges('switch')}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            commitUnitChanges('switch');
+                            e.currentTarget.blur();
+                          }
+                        }}
+                        className="w-24 rounded border border-slate-300 bg-white px-2 py-1 font-mono text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => commitUnitChanges('switch')}
+                        disabled={
+                          !inputUnitDraft.trim() ||
+                          inputUnitDraft.trim() === studioInputUnit
+                        }
+                        className="rounded border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <label
+                          htmlFor="studio-input-unit"
+                          className="text-[11px] text-slate-500"
+                        >
+                          Input
+                        </label>
+                        <input
+                          id="studio-input-unit"
+                          type="text"
+                          list="studio-unit-presets"
+                          value={inputUnitDraft}
+                          onChange={(e) => setInputUnitDraft(e.target.value)}
+                          onBlur={() => commitUnitChanges('input')}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              commitUnitChanges('input');
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          className="w-20 rounded border border-slate-300 bg-white px-2 py-1 font-mono text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <label
+                          htmlFor="studio-output-unit"
+                          className="text-[11px] text-slate-500"
+                        >
+                          Output
+                        </label>
+                        <input
+                          id="studio-output-unit"
+                          type="text"
+                          list="studio-unit-presets"
+                          value={outputUnitDraft}
+                          onChange={(e) => setOutputUnitDraft(e.target.value)}
+                          onBlur={() => commitUnitChanges('output')}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              commitUnitChanges('output');
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          className="w-20 rounded border border-slate-300 bg-white px-2 py-1 font-mono text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => commitUnitChanges('both')}
+                        disabled={
+                          (!inputUnitDraft.trim() ||
+                            inputUnitDraft.trim() === studioInputUnit) &&
+                          (!outputUnitDraft.trim() ||
+                            outputUnitDraft.trim() === studioOutputUnit)
+                        }
+                        className="rounded border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {persistedPlant &&
+                  onUpdatePlant &&
+                  buildUnitChangesList(
+                    persistedPlant,
+                    studioInputUnit,
+                    studioOutputUnit
+                  ).length > 0 && (
+                    <div className="flex items-center gap-2 text-[11px] text-amber-800">
+                      <span>
+                        Certificate only (Asset:{' '}
+                        <span className="font-mono font-semibold">
+                          {isSwitch
+                            ? resolvePlantUnits(persistedPlant).inUnit
+                            : `${resolvePlantUnits(persistedPlant).inUnit} / ${resolvePlantUnits(persistedPlant).outUnit}`}
+                        </span>
+                        )
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleOpenSyncUnitPrompt}
+                        className="font-semibold text-blue-700 underline hover:text-blue-900 cursor-pointer whitespace-nowrap"
+                      >
+                        Update Plant Asset
+                      </button>
+                    </div>
+                  )}
+              </div>
+            )}
 
             {isSwitch && evaluatedReadings[0] ? (
               (() => {
@@ -1485,6 +2030,75 @@ export const CertificateStudio: React.FC<CertificateStudioProps> = ({
           );
         }}
       />
+
+      {pendingUnitPrompt && (
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
+          <div className="w-full max-w-md rounded-md border border-slate-200 bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5">
+              <h3 className="font-display text-sm font-bold text-slate-900">
+                Update Unit in Plant Asset?
+              </h3>
+              <button
+                type="button"
+                disabled={updatingPlantUnit}
+                onClick={handleKeepCertificateUnitOnly}
+                aria-label="Close prompt"
+                className="rounded p-1 text-slate-500 hover:bg-slate-100 cursor-pointer disabled:opacity-50"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 p-5 text-xs text-slate-700">
+              <p>
+                You changed the unit of measure in Certificate Studio for{' '}
+                <span className="font-mono font-semibold text-slate-900">
+                  {pendingUnitPrompt.plant.assetId}
+                </span>{' '}
+                ({pendingUnitPrompt.plant.tagName}). Do you want to update this unit in the saved Plant Asset record as well?
+              </p>
+
+              <div className="divide-y divide-slate-200 rounded border border-slate-200 bg-slate-50">
+                {pendingUnitPrompt.changes.map((ch) => (
+                  <div
+                    key={ch.label}
+                    className="flex items-center justify-between px-3 py-2"
+                  >
+                    <span className="font-medium text-slate-600">{ch.label}</span>
+                    <span className="font-mono font-semibold text-slate-900">
+                      <span className="text-slate-500">{ch.oldUnit}</span> →{' '}
+                      <span className="text-blue-700">{ch.newUnit}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-[11px] text-slate-500">
+                Choosing &ldquo;Certificate Only&rdquo; applies the change to this certificate without modifying the Plant Assets database.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3">
+              <button
+                type="button"
+                disabled={updatingPlantUnit}
+                onClick={handleKeepCertificateUnitOnly}
+                className="rounded border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer disabled:opacity-50"
+              >
+                No, This Certificate Only
+              </button>
+              <button
+                type="button"
+                disabled={updatingPlantUnit}
+                onClick={handleConfirmUpdatePlantUnit}
+                className="rounded bg-blue-700 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-800 cursor-pointer disabled:opacity-50"
+              >
+                {updatingPlantUnit ? 'Updating Plant Asset...' : 'Yes, Update Plant Asset'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
